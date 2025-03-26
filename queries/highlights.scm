@@ -6,7 +6,7 @@
 
 ;;; Identifiers
 
-(simple_identifier) @variable
+(simple_identifier) @void
 
 ; `it` keyword inside lambdas
 ; FIXME: This will highlight the keyword outside of lambdas since tree-sitter
@@ -84,7 +84,7 @@
 ))
 
 (package_header
-	. (identifier)) @namespace
+	. (identifier)) @void
 
 (import_header
 	"import" @include)
@@ -96,8 +96,7 @@
 
 ;;; Function definitions
 
-(function_declaration
-	. (simple_identifier) @function)
+(function_declaration (simple_identifier) @function)
 
 (getter
 	("get") @function.builtin)
@@ -191,9 +190,10 @@
 
 [
 	(line_comment)
-	(multiline_comment)
 	(shebang_line)
 ] @comment
+
+(multiline_comment) @comment.doc
 
 (real_literal) @float
 [
@@ -205,7 +205,7 @@
 ] @number
 
 [
-	(null_literal) ; should be highlighted the same as booleans
+	(null_literal)
 	(boolean_literal)
 ] @boolean
 
@@ -269,12 +269,13 @@
 	"class"
 	"object"
 	"interface"
+	"companion"
 ;	"typeof" ; NOTE: It is reserved for future use
 ] @keyword
 
 ("fun") @keyword.function
 
-(jump_expression) @keyword.return
+(jump_expression "return" @keyword.return)
 
 [
 	"if"
@@ -378,3 +379,10 @@
 	"${" @punctuation.special
 	(interpolated_expression) @none
 	"}" @punctuation.special)
+
+(package_header "package" @namespace)
+(import_header . (identifier)) @void
+(for_statement "in" @keyword)
+(value_argument "=" @label)
+(value_argument (simple_identifier) @label "=")
+("return@") @keyword
