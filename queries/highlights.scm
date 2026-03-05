@@ -182,7 +182,6 @@
 		"require"
 		"requireNotNull"
 		"with"
-		"suspend"
 		"synchronized"
 ))
 
@@ -348,12 +347,11 @@
 	"?:"
 	"!!"
 	"is"
-	"!is"
 	"in"
-	"!in"
 	"as"
 	"as?"
 	".."
+	"..<"
 	"->"
 ] @operator
 

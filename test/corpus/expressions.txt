@@ -12,6 +12,38 @@ Multiplication expression
     (integer_literal)))
 
 ================================================================================
+Prefix expressions
+================================================================================
+
+!isLastField
+!x
+++x
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (prefix_expression
+    (simple_identifier))
+  (prefix_expression
+    (simple_identifier))
+  (prefix_expression
+    (simple_identifier)))
+
+================================================================================
+Prefix expression with disjunction
+================================================================================
+
+!x || y
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (disjunction_expression
+    (prefix_expression
+      (simple_identifier))
+    (simple_identifier)))
+
+================================================================================
 Safe Navigation
 ================================================================================
 
@@ -88,6 +120,52 @@ sum(1, 2)
           (integer_literal))))))
 
 ================================================================================
+Check expression
+================================================================================
+
+count in 1..45
+day in 1..7
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (check_expression
+    (simple_identifier)
+    (range_expression
+      (integer_literal)
+      (integer_literal)))
+  (check_expression
+    (simple_identifier)
+    (range_expression
+      (integer_literal)
+      (integer_literal))))
+
+================================================================================
+Range-until expression
+================================================================================
+
+for (i in 0..<10) {}
+val r = 1..<n
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (for_statement
+    (variable_declaration
+      (simple_identifier))
+    (range_expression
+      (integer_literal)
+      (integer_literal))
+    (control_structure_body))
+  (property_declaration
+    (binding_pattern_kind)
+    (variable_declaration
+      (simple_identifier))
+    (range_expression
+      (integer_literal)
+      (simple_identifier))))
+
+================================================================================
 When expression
 ================================================================================
 
@@ -95,7 +173,13 @@ val x = 1
 val y = when(x){
         1 -> true
         2 -> false
+        in 3..10 -> true
     }
+val z = when(x) {
+        1,2 -> 0
+        3,4 -> 1
+        5,  -> 2
+}
 
 --------------------------------------------------------------------------------
 
@@ -121,7 +205,75 @@ val y = when(x){
         (when_condition
           (integer_literal))
         (control_structure_body
-          (boolean_literal))))))
+          (boolean_literal)))
+      (when_entry
+        (when_condition
+          (range_test
+            (range_expression
+              (integer_literal)
+              (integer_literal))))
+        (control_structure_body
+          (boolean_literal)))))
+  (property_declaration
+    (binding_pattern_kind)
+    (variable_declaration
+      (simple_identifier))
+    (when_expression
+      (when_subject
+        (simple_identifier))
+      (when_entry
+        (when_condition
+          (integer_literal))
+        (when_condition
+          (integer_literal))
+        (control_structure_body
+          (integer_literal)))
+      (when_entry
+        (when_condition
+          (integer_literal))
+        (when_condition
+          (integer_literal))
+        (control_structure_body
+          (integer_literal)))
+      (when_entry
+        (when_condition
+          (integer_literal))
+        (control_structure_body
+          (integer_literal))))))
+
+================================================================================
+When expression with prefix unary expressions
+================================================================================
+
+when {
+  !x -> false
+  !isLastField -> false
+  isLastField && x -> false
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (when_expression
+    (when_entry
+      (when_condition
+        (prefix_expression
+          (simple_identifier)))
+      (control_structure_body
+        (boolean_literal)))
+    (when_entry
+      (when_condition
+        (prefix_expression
+          (simple_identifier)))
+      (control_structure_body
+        (boolean_literal)))
+    (when_entry
+      (when_condition
+        (conjunction_expression
+          (simple_identifier)
+          (simple_identifier)))
+      (control_structure_body
+        (boolean_literal)))))
 
 ================================================================================
 When expression with type arguments
@@ -129,6 +281,7 @@ When expression with type arguments
 
 when (this) {
     is DispatchedCoroutine<*> -> return null
+    !is DispatchedCoroutine<*> -> return null
 }
 
 --------------------------------------------------------------------------------
@@ -146,7 +299,40 @@ when (this) {
               (type_projection)))))
       (control_structure_body
         (jump_expression
+          (null_literal))))
+    (when_entry
+      (when_condition
+        (type_test
+          (user_type
+            (type_identifier)
+            (type_arguments
+              (type_projection)))))
+      (control_structure_body
+        (jump_expression
           (null_literal))))))
+
+================================================================================
+Expressions with Soft Keywords
+================================================================================
+
+overrides.find { override -> true }
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (call_expression
+    (navigation_expression
+      (simple_identifier)
+      (navigation_suffix
+        (simple_identifier)))
+    (call_suffix
+      (annotated_lambda
+        (lambda_literal
+          (lambda_parameters
+            (variable_declaration
+              (simple_identifier)))
+          (statements
+            (boolean_literal)))))))
 
 ================================================================================
 Value declaration with receiver type
@@ -321,6 +507,22 @@ val a = a<2>(3)
         (integer_literal)))))
 
 ================================================================================
+Type arguments before navigation suffix
+================================================================================
+
+foo<*>::bar
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (navigation_expression
+    (simple_identifier)
+    (navigation_suffix
+      (type_arguments
+        (type_projection))
+      (simple_identifier))))
+
+================================================================================
 Lambda Expressions
 ================================================================================
 
@@ -345,6 +547,86 @@ foo.forEach { (index, value) -> 2 }
                 (simple_identifier))))
           (statements
             (integer_literal)))))))
+
+================================================================================
+Lambda literals with multi variable declaration with types
+================================================================================
+
+val baz =
+  { (foo, bar): Pair<Foo, List<Bar>?> -> (bar ?: listOf()) }
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (property_declaration
+    (binding_pattern_kind)
+    (variable_declaration
+      (simple_identifier))
+    (lambda_literal
+      (lambda_parameters
+        (multi_variable_declaration
+          (variable_declaration
+            (simple_identifier))
+          (variable_declaration
+            (simple_identifier)))
+        (user_type
+          (type_identifier)
+          (type_arguments
+            (type_projection
+              (user_type
+                (type_identifier)))
+            (type_projection
+              (nullable_type
+                (user_type
+                  (type_identifier)
+                  (type_arguments
+                    (type_projection
+                      (user_type
+                        (type_identifier)))))
+                (quest))))))
+      (statements
+        (parenthesized_expression
+          (elvis_expression
+            (simple_identifier)
+            (call_expression
+              (simple_identifier)
+              (call_suffix
+                (value_arguments)))))))))
+
+================================================================================
+Lambda Expression with suspend
+================================================================================
+
+values.map { suspend { it().await() } }
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (call_expression
+    (navigation_expression
+      (simple_identifier)
+      (navigation_suffix
+        (simple_identifier)))
+    (call_suffix
+      (annotated_lambda
+        (lambda_literal
+          (statements
+            (call_expression
+              (simple_identifier)
+              (call_suffix
+                (annotated_lambda
+                  (lambda_literal
+                    (statements
+                      (call_expression
+                        (navigation_expression
+                          (call_expression
+                            (simple_identifier)
+                            (call_suffix
+                              (value_arguments)))
+                          (navigation_suffix
+                            (simple_identifier)))
+                        (call_suffix
+                          (value_arguments))))))))))))))
 
 ================================================================================
 Function call with trailing lambda
@@ -375,6 +657,7 @@ fun main() { val temp = b.y; b.y = b.z; b.z = temp }
 when (dir) {
   1 -> { val temp = b.y; b.y = b.z; b.z = temp }
 }
+
 --------------------------------------------------------------------------------
 
 (source_file
@@ -439,6 +722,119 @@ when (dir) {
             (simple_identifier)))))))
 
 ================================================================================
+Statements with Line Breaks
+================================================================================
+
+when {
+  id != null -> x.nodes.fromId(id)
+                        as Foo?
+  else -> null
+}
+
+when {
+  id != null -> x.nodes.fromId(id)
+                        as? Foo
+  else -> null
+}
+
+fun <T> copyWhenGreater(list: List<T>, threshold: T): List<String>
+    where T : CharSequence,
+          T : Comparable<T>
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (when_expression
+    (when_entry
+      (when_condition
+        (equality_expression
+          (simple_identifier)
+          (null_literal)))
+      (control_structure_body
+        (as_expression
+          (call_expression
+            (navigation_expression
+              (navigation_expression
+                (simple_identifier)
+                (navigation_suffix
+                  (simple_identifier)))
+              (navigation_suffix
+                (simple_identifier)))
+            (call_suffix
+              (value_arguments
+                (value_argument
+                  (simple_identifier)))))
+          (nullable_type
+            (user_type
+              (type_identifier))
+            (quest)))))
+    (when_entry
+      (control_structure_body
+        (null_literal))))
+  (when_expression
+    (when_entry
+      (when_condition
+        (equality_expression
+          (simple_identifier)
+          (null_literal)))
+      (control_structure_body
+        (as_expression
+          (call_expression
+            (navigation_expression
+              (navigation_expression
+                (simple_identifier)
+                (navigation_suffix
+                  (simple_identifier)))
+              (navigation_suffix
+                (simple_identifier)))
+            (call_suffix
+              (value_arguments
+                (value_argument
+                  (simple_identifier)))))
+          (user_type
+            (type_identifier)))))
+    (when_entry
+      (control_structure_body
+        (null_literal))))
+  (function_declaration
+    (type_parameters
+      (type_parameter
+        (type_identifier)))
+    (simple_identifier)
+    (function_value_parameters
+      (parameter
+        (simple_identifier)
+        (user_type
+          (type_identifier)
+          (type_arguments
+            (type_projection
+              (user_type
+                (type_identifier))))))
+      (parameter
+        (simple_identifier)
+        (user_type
+          (type_identifier))))
+    (user_type
+      (type_identifier)
+      (type_arguments
+        (type_projection
+          (user_type
+            (type_identifier)))))
+    (type_constraints
+      (type_constraint
+        (type_identifier)
+        (user_type
+          (type_identifier)))
+      (type_constraint
+        (type_identifier)
+        (user_type
+          (type_identifier)
+          (type_arguments
+            (type_projection
+              (user_type
+                (type_identifier)))))))))
+
+================================================================================
 Comments in Strings
 ================================================================================
 
@@ -446,12 +842,12 @@ val comments = foo("//")
 val comments = foo("hello //")
 val comments = foo("// there")
 val comments = foo("hello // there")
-val comments = """ 
+val comments = """
   // hey there's a
-  
+
   /* comment or two here */
 """
-val comments = """ // and here """ 
+val comments = """ // and here """
 
 --------------------------------------------------------------------------------
 
@@ -589,11 +985,11 @@ If else-if else expression
 ================================================================================
 
 if (cond1) {
-	println("cond1")
+  println("cond1")
 } else if (cond2) {
-	println("cond2")
+  println("cond2")
 } else {
-	println("cond3")
+  println("cond3")
 }
 
 --------------------------------------------------------------------------------
@@ -709,3 +1105,231 @@ a imports b
     (simple_identifier)
     (simple_identifier)
     (simple_identifier)))
+
+================================================================================
+Object literal with explicit delegation
+================================================================================
+
+val proxy = object : Handler by defaultHandler {
+    override fun handle() = "proxied"
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (property_declaration
+    (binding_pattern_kind)
+    (variable_declaration
+      (simple_identifier))
+    (object_literal
+      (delegation_specifier
+        (explicit_delegation
+          (user_type
+            (type_identifier))
+          (simple_identifier)))
+      (class_body
+        (function_declaration
+          (modifiers
+            (member_modifier))
+          (simple_identifier)
+          (function_value_parameters)
+          (function_body
+            (string_literal
+              (string_content))))))))
+
+================================================================================
+Object literal with delegation and call expression delegate
+================================================================================
+
+val proxy = object : Handler by getHandler() {
+    override fun handle() = "proxied"
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (property_declaration
+    (binding_pattern_kind)
+    (variable_declaration
+      (simple_identifier))
+    (object_literal
+      (delegation_specifier
+        (explicit_delegation
+          (user_type
+            (type_identifier))
+          (call_expression
+            (simple_identifier)
+            (call_suffix
+              (value_arguments)))))
+      (class_body
+        (function_declaration
+          (modifiers
+            (member_modifier))
+          (simple_identifier)
+          (function_value_parameters)
+          (function_body
+            (string_literal
+              (string_content))))))))
+
+================================================================================
+Object literal with nested object literal delegate
+================================================================================
+
+val x = object : A by object : A {
+    override fun m() = "inner"
+} {
+    override fun m() = "outer"
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (property_declaration
+    (binding_pattern_kind)
+    (variable_declaration
+      (simple_identifier))
+    (object_literal
+      (delegation_specifier
+        (explicit_delegation
+          (user_type
+            (type_identifier))
+          (object_literal
+            (delegation_specifier
+              (user_type
+                (type_identifier)))
+            (class_body
+              (function_declaration
+                (modifiers
+                  (member_modifier))
+                (simple_identifier)
+                (function_value_parameters)
+                (function_body
+                  (string_literal
+                    (string_content))))))))
+      (class_body
+        (function_declaration
+          (modifiers
+            (member_modifier))
+          (simple_identifier)
+          (function_value_parameters)
+          (function_body
+            (string_literal
+              (string_content))))))))
+
+================================================================================
+Object literal with navigation expression delegate
+================================================================================
+
+val x = object : Interface by delegateHolder.delegate {
+    override fun method() {}
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (property_declaration
+    (binding_pattern_kind)
+    (variable_declaration
+      (simple_identifier))
+    (object_literal
+      (delegation_specifier
+        (explicit_delegation
+          (user_type
+            (type_identifier))
+          (navigation_expression
+            (simple_identifier)
+            (navigation_suffix
+              (simple_identifier)))))
+      (class_body
+        (function_declaration
+          (modifiers
+            (member_modifier))
+          (simple_identifier)
+          (function_value_parameters)
+          (function_body))))))
+
+================================================================================
+Object literal with constructor invocation and class body
+================================================================================
+
+val impl = object : WithDefault() {
+    override fun required(): String {
+        return "implemented"
+    }
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (property_declaration
+    (binding_pattern_kind)
+    (variable_declaration
+      (simple_identifier))
+    (object_literal
+      (delegation_specifier
+        (constructor_invocation
+          (user_type
+            (type_identifier))
+          (value_arguments)))
+      (class_body
+        (function_declaration
+          (modifiers
+            (member_modifier))
+          (simple_identifier)
+          (function_value_parameters)
+          (user_type
+            (type_identifier))
+          (function_body
+            (statements
+              (jump_expression
+                (string_literal
+                  (string_content))))))))))
+
+================================================================================
+Object literal with user type and class body (no parens)
+================================================================================
+
+val x = object : Foo {
+    override fun bar() {}
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (property_declaration
+    (binding_pattern_kind)
+    (variable_declaration
+      (simple_identifier))
+    (object_literal
+      (delegation_specifier
+        (user_type
+          (type_identifier)))
+      (class_body
+        (function_declaration
+          (modifiers
+            (member_modifier))
+          (simple_identifier)
+          (function_value_parameters)
+          (function_body))))))
+
+================================================================================
+Bare object literal with class body (no supertype)
+================================================================================
+
+val x = object {
+    fun foo() {}
+}
+
+--------------------------------------------------------------------------------
+
+(source_file
+  (property_declaration
+    (binding_pattern_kind)
+    (variable_declaration
+      (simple_identifier))
+    (object_literal
+      (class_body
+        (function_declaration
+          (simple_identifier)
+          (function_value_parameters)
+          (function_body))))))
